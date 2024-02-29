@@ -327,15 +327,21 @@ public abstract class SchematronConstraintNodeXslt2 {
 	    if (surroundWithBrackets) {
 		fragment += "(";
 	    }
+		if(ci.pkg().matches("rule-xsd-pkg-cdf")){
 
-	    /*
-	     * 2018-02-06 JE: comparison based on QName as literal value (like 'ex:ClassX')
-	     * is dangerous, because it depends on a fixed namespace prefix. However, the
-	     * prefix of a namespace can vary. Therefore, I changed the logic to use
-	     * local-name() and namespace-uri().
-	     */
-	    fragment += "local-name()='" + localName + "' and namespace-uri()='" + namespace + "'";
+			//only doing SA version right now as it is easiest
+			// another hack, we need to figure out how to get right prefix
+			fragment += ". instance of element(" + "*" + ", cdf:" + ci.name() + ")";
 
+		} else {
+			/*
+			 * 2018-02-06 JE: comparison based on QName as literal value (like 'ex:ClassX')
+			 * is dangerous, because it depends on a fixed namespace prefix. However, the
+			 * prefix of a namespace can vary. Therefore, I changed the logic to use
+			 * local-name() and namespace-uri().
+			 */
+			fragment += "local-name()='" + localName + "' and namespace-uri()='" + namespace + "'";
+		}
 	    if (surroundWithBrackets) {
 		fragment += ")";
 	    }
@@ -534,10 +540,11 @@ public abstract class SchematronConstraintNodeXslt2 {
 
 		SchematronConstraintNodeXslt2 child = children.get(i);
 
-		if (!child.hasSimpleType() && !child.hasIdentity()) {
+		// SHORT CIRCUIT FOR NOW, SEE WHAT HAPPENS
+		/*if (!child.hasSimpleType() && !child.hasIdentity()) {
 		    return new XpathFragment(20, "***ERROR[126]***");
 		}
-
+*/
 		child_xpt[i] = child.translate(ctx);
 		if (child.hasIdentity()) {
 		    child_xpt[i].fragment = "generate-id(" + child_xpt[i].fragment + ")";
@@ -930,8 +937,8 @@ public abstract class SchematronConstraintNodeXslt2 {
 		    Attribute bodyAtt = (Attribute) body;
 		    // The type name is relevant in case of 'Boolean'
 		    String objAttNameOfLastClass = bodyAtt.attributes[bodyAtt.attributes.length - 1].main.dataType.name;
-
-		    boolean simple = bodyAtt.hasSimpleType();
+			// we're going to hard-code this for now
+		    boolean simple = true; //bodyAtt.hasSimpleType();
 		    boolean hasIdentity = bodyAtt.hasIdentity();
 
 		    String objXpt = xpt.fragment;
@@ -951,13 +958,13 @@ public abstract class SchematronConstraintNodeXslt2 {
 		    XpathFragment bodyXpt = body.translate(bodyctx);
 		    bodyXpt.atEnd = null; // This suppresses the merging of ending contexts
 
-		    String iterVar = "$" + vardecl.name;
+		    String iterVar = vardecl.name;
 
 		    if (simple) {
 
 			xpt.fragment = "count(" + objXpt + ") = count(distinct-values(";
 
-			xpt.fragment += "for " + iterVar + " in " + objXpt + " return (if (empty(" + bodyXpt.fragment
+			xpt.fragment += "for $" + iterVar + " in " + objXpt + " return (if (empty(" + bodyXpt.fragment
 				+ ")) then '" + IS_UNIQUE_EMPTY_TOKEN + "' else " + bodyXpt.fragment;
 
 			if ("Boolean".equalsIgnoreCase(objAttNameOfLastClass)) {
@@ -1124,7 +1131,7 @@ public abstract class SchematronConstraintNodeXslt2 {
 	    }
 
 	    xpt.fragment += "[";
-	    if (!vardecl.name.equalsIgnoreCase("(noname)")) {
+	    if (!vardecl.name.equalsIgnoreCase("noname")) {
 		xpt.fragment += "for $" + vardecl.name + " in . return ";
 	    }
 	    xpt.fragment += filter + "]";
@@ -1423,28 +1430,29 @@ public abstract class SchematronConstraintNodeXslt2 {
 
 	    } else {
 
-		// There are one or more classes, append a predicate which
-		// compares against all possible names.
+			// There are one or more classes, append a predicate which
+			// compares against all possible names.
 
-		Pair<String, Integer> pair = getExpressionForTypeRestriction(relevantClasses);
-		String expression = pair.getLeft();
-		int expressionPriority = pair.getRight();
+			Pair<String, Integer> pair = getExpressionForTypeRestriction(relevantClasses);
+			String expression = pair.getLeft();
+			int expressionPriority = pair.getRight();
 
-		if (negated) {
-		    expression = "not(" + expression + ")";
+			if (negated) {
+				expression = "not(" + expression + ")";
+			}
+
+			if (!emptyobject) {
+				if (xptobj.priority < 19) {
+					xptobj.bracket();
+				}
+				xptobj.fragment += "[" + expression + "]";
+				xptobj.priority = 19;
+			} else {
+				xptobj.fragment = expression;
+				xptobj.priority = negated ? 20 : expressionPriority;
+			}
 		}
 
-		if (!emptyobject) {
-		    if (xptobj.priority < 19) {
-			xptobj.bracket();
-		    }
-		    xptobj.fragment += "[" + expression + "]";
-		    xptobj.priority = 19;
-		} else {
-		    xptobj.fragment = expression;
-		    xptobj.priority = negated ? 20 : expressionPriority;
-		}
-	    }
 
 	    return xptobj;
 	}
@@ -1804,7 +1812,49 @@ public abstract class SchematronConstraintNodeXslt2 {
 	}
     }
 
-    /**
+	/**
+	 * This class stands for an OCL toLower operation. The operation converts all characters in the string to lowercase.
+	 */
+	public static class ToLower extends SchematronConstraintNodeXslt2 {
+
+		/**
+		 * Ctor
+		 *
+		 * @param schemaObject The schema object
+		 */
+		public ToLower(AbstractSchematronSchema schemaObject) {
+			this.schemaObject = schemaObject;
+		}
+
+		/**
+		 * This compiles a Substring object to its Xpath equivalent.
+		 *
+		 * @param ctx BindingContext this node shall be compiled in
+		 * @return Object containing the Xpath fragment
+		 */
+		public XpathFragment translate(BindingContext ctx) {
+
+			// Translate the arguments
+			XpathFragment xptobj = children.get(0).translate(ctx);
+			if (xptobj.fragment.length() == 0) {
+				xptobj.fragment = ".";
+			}
+
+			// Construct the substring function
+			xptobj.fragment = "lower-case(" + xptobj.fragment + ")";
+
+			// Accompany with the required fragment attributes
+			// JND: not sure what any of this does, oh well
+			xptobj.type = XpathType.STRING;
+			xptobj.priority = 20;
+			xptobj.atEnd.setState(BindingContext.CtxState.NONE);
+
+			return xptobj;
+		}
+	}
+
+
+	/**
      * This class stands for matches operation, which this implemention added to
      * OCL's core functions.
      */
@@ -2735,7 +2785,10 @@ public abstract class SchematronConstraintNodeXslt2 {
 			frag_inl += propertyQName;
 			if (xpt.atEnd != null)
 			    xpt.atEnd.addStep();
-			frag_inl += "/*";
+			boolean isCDF = pi.typeClass() != null ? pi.typeClass().pkg().matches("rule-xsd-pkg-cdf") : true;
+			if(!isCDF) {
+				frag_inl += "/*";
+			}
 			if (xpt.atEnd != null)
 			    xpt.atEnd.addStep();
 		    }
@@ -2743,19 +2796,29 @@ public abstract class SchematronConstraintNodeXslt2 {
 		    if (conCode == 2 || conCode == 3) {
 
 			// Handle byReference case
+			boolean isCDF = pi.typeClass().pkg().matches("rule-xsd-pkg-cdf");
 
 			String attxlink = (lastForExprVariable.isEmpty() ? "" : lastForExprVariable + "/");
 			attxlink += propertyQName;
-			attxlink += "/@xlink:href";
+			if(isCDF){
+				String idSuffix = pi.cardinality().maxOccurs > 1 ? "Ids" : "Id";
+				// this is a cheat. Instead of deleting the extra indirection to the type, we just append the Ids
+				// directly on it.
+				attxlink += idSuffix;
+			} else {
+				attxlink += "/@xlink:href";
+			}
 
 			String refIdExpr = null;
-			if (alphaEx && betaEx) {
+
+			// probably don't need this long term, need to figure out what emits the # (alpha) and get rid of it instead
+			if (alphaEx && betaEx && !isCDF) {
 			    // identifier prefix and suffix exist
 			    refIdExpr = "substring-before(substring-after($BYREFVAR,'" + alpha + "'),'" + beta + "')";
-			} else if (alphaEx) {
+			} else if (alphaEx && !isCDF) {
 			    // only identifier prefix exists
 			    refIdExpr = "substring-after($BYREFVAR,'" + alpha + "')";
-			} else if (betaEx) {
+			} else if (betaEx && !isCDF) {
 			    // only identifier suffix exists
 			    refIdExpr = "substring-before($BYREFVAR,'" + beta + "')";
 			} else {

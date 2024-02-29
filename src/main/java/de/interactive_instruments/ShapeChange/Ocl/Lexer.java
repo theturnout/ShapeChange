@@ -112,7 +112,7 @@ public class Lexer {
 			")";
 	static String javaVersion = System.getProperty("java.version");
 	static char major = javaVersion.charAt(0);
-	static char minor = javaVersion.charAt(2);
+	static char minor = javaVersion.charAt(1);
 	
 	static private Pattern scanPattern = 
 			(major == '1' && minor == '6' ? 

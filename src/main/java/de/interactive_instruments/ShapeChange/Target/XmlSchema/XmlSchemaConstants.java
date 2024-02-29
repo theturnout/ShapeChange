@@ -59,4 +59,10 @@ public class XmlSchemaConstants {
     public static final String PARAM_ENUM_STYLE = "enumStyle";
     public static final String PARAM_REALISATION_LIKE_GENERALISATION = "realisationLikeGeneralisation";
     public static final String PARAM_WRITE_XML_ENCODING_INFOS = "writeXmlEncodingInfos";
+
+    //CDF additions
+
+    public static final String PARAM_IMPORTED_NAMESPACE = "saImportedNamespace";
+
+    public static final String PARAM_SCHEMA_LOCATION = "saSchemaLocation";
 }

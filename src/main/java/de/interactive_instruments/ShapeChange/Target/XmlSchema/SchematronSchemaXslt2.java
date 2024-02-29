@@ -629,13 +629,19 @@ public class SchematronSchemaXslt2 extends AbstractSchematronSchema implements M
 		enclosing.addChild(matches);
 	    return matches;
 
-	} else if (opname.equals("length") || opname.equals("area")) {
+	} else if (opname.equals("length") || opname.equals("area") || opname.equals("toUpper")) {
 
 	    result.addError(this, 103, opname, currentOclConstraintName, currentOclConstraintClass.name());
 
-	} else if (opname.equals("toUpper") || opname.equals("toLower")) {
+	} else if (opname.equals("toLower")) {
 
-	    result.addError(this, 103, opname, currentOclConstraintName, currentOclConstraintClass.name());
+	   // result.addError(this, 103, opname, currentOclConstraintName, currentOclConstraintClass.name());
+
+		// Create the ToLower node
+		SchematronConstraintNodeXslt2.ToLower substr = new SchematronConstraintNodeXslt2.ToLower(this);
+		// Evaluate the operands
+		substr.addChild(translateConstraintToSchematronNode(oper.object, null, false));
+		return substr;
 
 	} else if ("+-*/".indexOf(opname) >= 0) {
 

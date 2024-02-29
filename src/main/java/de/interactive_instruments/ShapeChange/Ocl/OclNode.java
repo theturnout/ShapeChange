@@ -205,6 +205,8 @@ public abstract class OclNode {
 		    MultiplicityMapping.ONE2ONE, BuiltInType.STRING, 4),
 	    new BuiltInDescr("concat", BuiltInType.STRING, new BuiltInType[] { BuiltInType.STRING }, 0, false,
 		    MultiplicityMapping.ONE2ONE, BuiltInType.STRING, 4),
+		new BuiltInDescr("toLower", BuiltInType.STRING, null, 0, false,
+			MultiplicityMapping.ONE2ONE, BuiltInType.STRING, 4),
 	    new BuiltInDescr("matches", BuiltInType.STRING, new BuiltInType[] { BuiltInType.STRING }, 0, false,
 		    MultiplicityMapping.ONE2ONE, BuiltInType.BOOLEAN, 4),
 	    new BuiltInDescr("oclIsKindOf", BuiltInType.ANY, new BuiltInType[] { BuiltInType.CLASS }, 0, false,
@@ -1056,7 +1058,8 @@ public abstract class OclNode {
 	 * @param impl    Is this implicitly generated?
 	 */
 	public Declaration(String name, DataType dt, OclNode ival, Declaration declCtx, OclNode owner, boolean impl) {
-	    this.name = name != null ? name : "(noname)";
+		//not sure why they used parens, as it breaks XPath?
+		this.name = name != null ? name : "noname";
 	    dataType = dt;
 	    initialValue = ival;
 	    nextOuter = declCtx;

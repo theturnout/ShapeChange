@@ -1223,6 +1223,8 @@ public class XmlSchema implements Target, MessageSource {
 	r.addRule("rule-xsd-cls-type");
 	r.addRule("rule-xsd-cls-property-type");
 	r.addRule("rule-xsd-cls-local-properties");
+	// CDF specific rules
+	r.addRule("rule-xsd-pkg-cdf");
 	/*
 	 * Associate these with a core encoding rule
 	 */

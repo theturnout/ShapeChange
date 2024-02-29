@@ -279,7 +279,14 @@ public abstract class AbstractSchematronSchema implements SchematronSchema {
 	 * Create an assertion. Find out if a rule for the required context already
 	 * exists.
 	 */
-	String ruleContext = ci.qname();
+
+	String ruleContext;
+
+	if(ci.pkg().matches("rule-xsd-pkg-cdf")) {
+		ruleContext = "element(*, " + ci.qname() + ")";
+	} else {
+		ruleContext = ci.qname();
+	}
 	RuleCreationStatus rulecs = ruleCreationStatusMap.get(ruleContext);
 	String asserttext;
 	if (rulecs == null) {
@@ -588,13 +595,33 @@ public abstract class AbstractSchematronSchema implements SchematronSchema {
 	    addAttribute(document, root, "xmlns:xsl", "http://www.w3.org/1999/XSL/Transform");
 
 	    Element e = document.createElementNS("http://www.w3.org/1999/XSL/Transform", "xsl:key");
-	    addAttribute(document, e, "name", "idKey");
-	    addAttribute(document, e, "match", "*[@*:id]");
-	    addAttribute(document, e, "use", "@*:id");
+	    boolean isCDF = true;
+		if(isCDF) {
+			addAttribute(document, e, "name", "idKey");
+			addAttribute(document, e, "match", "*[@*:ObjectId]");
+			addAttribute(document, e, "use", "@*:ObjectId");
+		} else {
+			addAttribute(document, e, "name", "idKey");
+			addAttribute(document, e, "match", "*[@*:id]");
+			addAttribute(document, e, "use", "@*:id");
+		}
 	    root.insertBefore(e, pattern);
 	}
 
-	// Do the actual writing
+		String importedNamespace =  options.parameterAsString(XmlSchema.class.getName(), XmlSchemaConstants.PARAM_IMPORTED_NAMESPACE,
+				null, false, true);
+		String importedSchemaLocation = options.parameterAsString(XmlSchema.class.getName(), XmlSchemaConstants.PARAM_SCHEMA_LOCATION,
+				null, false, true);
+		if(importedNamespace != null && importedSchemaLocation != null){
+			Element e = document.createElementNS("http://www.w3.org/1999/XSL/Transform", "xsl:import-schema");
+
+			addAttribute(document, e, "namespace", importedNamespace);
+			addAttribute(document, e, "schema-location", importedSchemaLocation);
+
+			root.insertBefore(e, pattern);
+		}
+
+		// Do the actual writing
 	try {
 	    
 	    File fout = new File(outputDirectory,this.schematronFilename);
